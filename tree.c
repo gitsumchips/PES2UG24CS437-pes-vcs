@@ -198,6 +198,19 @@ int make_tree(Index *index, const char *cur_dir, ObjectID *out_id) {
             tree_entry->name[sizeof(tree_entry->name) - 1] = '\0';
         }
     }
+
+    void *data;
+    size_t len;
+
+    if (tree_serialize(&tree, &data, &len) < 0)
+        return -1;
+
+    if (object_write(OBJ_TREE, data, len, out_id) < 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
     return 0;
 }
 
