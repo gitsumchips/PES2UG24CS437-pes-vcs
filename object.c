@@ -232,5 +232,30 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     }
     fclose(fp);
     
+    //Check if hash is same
+    ObjectID computed;
+    compute_hash(buf, file_size, &computed);
+    if (memcmp(computed.hash, id->hash, HASH_SIZE) != 0) {
+        free(buf);
+        return -1;
+    }
+
+    //Extract the header contents (type and size)
+    char *null_pos = memchr(buf, '\0', file_size);
+    if (!null_pos) {
+        free(buf);
+        return -1;
+    }
+
+    size_t header_len = null_pos - buf;
+
+    char type_str[10];
+    size_t size;
+
+    if (sscanf(buf, "%s %zu", type_str, &size) != 2) {
+        free(buf);
+        return -1;
+    }
+
     return 0;
 }
