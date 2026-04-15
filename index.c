@@ -170,31 +170,28 @@ int index_load(Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_save(const Index *index) {
-   //Making temp file
-    char temp_path[512];
-    snprintf(temp_path, sizeof(temp_path), "./pes/tmpXXXXXX");
+    FILE *fp = fopen(INDEX_FILE ".tmp", "w");
+    if (!fp) return -1;
 
-    int fd = mkstemp(temp_path); //now the XXXXXX would have been replaced with some random characters
-    if (fd < 0) {
-        return -1;
-    } //if you failed to make the temp file then return -1
+    char hash_hex[65];
 
     for (int i = 0; i < index->count; i++) {
-        fprintf(fp, "%" PRIu32 " %64s %" PRIu64 " %" PRIu32 " %s\n");
+        hash_to_hex(&index->entries[i].hash, hash_hex);
+
+        fprintf(fp, "%o %s %s\n",
+                index->entries[i].mode,
+                hash_hex,
+                index->entries[i].path);
     }
 
-    //converting the file descriptor into a file poitner so that fprintf can be used to write into the temp file
-    FILE *fp = fdopen(fd, "w");
-    if (!fp) {
-        close(fd);
-        unlink(temp_path);
+    if (fflush(fp) < 0 || fsync(fileno(fp)) < 0 ||  fclose(fp) < 0) {
         return -1;
     }
 
-    // TODO: Implement atomic index saving
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
+    // atomic replace
+    rename(INDEX_FILE ".tmp", INDEX_FILE);
+
+    return 0;
 }
 
 // Stage a file for the next commit.
