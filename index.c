@@ -23,10 +23,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <inttypes.h>
-
-
-int hex_to_hash(const char *hex, ObjectID *id_out);
 
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
@@ -139,48 +135,24 @@ int index_status(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_load(Index *index) {
-    FILE* fp = fopen("pes/index", "r");
+    FILE *fp = fopen(INDEX_FILE, "r");
+
     if (!fp) {
-        perror("fopen failed");
-        return -1;
+        index->count = 0;
+        return 0;
     }
 
     index->count = 0;
 
-    char raw_entry[1024];
+    char hex_out[65];
 
-    while (fgets(raw_entry, sizeof(raw_entry), fp) != NULL) {
-        uint32_t mode;
-        char hash[65];
-        uint64_t mtime_sec;
-        uint32_t size;
-        char path[512];
+    while (fscanf(fp, "%o %64s %255s",
+                  &index->entries[index->count].mode,
+                  hex_out,
+                  index->entries[index->count].path) == 3) {
 
-        if (sscanf(raw_entry, "%" SCNu32 " %64s %" SCNu64 " %" SCNu32 " %511[^\n]", &mode, hash, &mtime_sec, &size, path) == 5) {
-            if (index->count >= MAX_INDEX_ENTRIES) {
-                fclose(fp);
-                return -1;
-            }
-
-            index->entries[index->count].mode = mode;
-            index->entries[index->count].mtime_sec = mtime_sec;
-            index->entries[index->count].size = size;
-
-            strncpy(index->entries[index->count].path, path, sizeof(index->entries[index->count].path) - 1);
-            index->entries[index->count].path[sizeof(index->entries[index->count].path) - 1] = '\0';
-
-            if (hex_to_hash(hash, &index->entries[index->count].hash)) {
-                printf("Error in hex_to_hash\n");
-                fclose(fp);
-                return -1;
-            }
-
-            index->count++;
-        }
-        else {
-            fclose(fp);
-            return -1;
-        }
+        hex_to_hash(hex_out, &index->entries[index->count].hash);
+        index->count++;
     }
 
     fclose(fp);
@@ -198,7 +170,7 @@ int index_load(Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_save(const Index *index) {
-    //Making temp file
+   //Making temp file
     char temp_path[512];
     snprintf(temp_path, sizeof(temp_path), "./pes/tmpXXXXXX");
 
