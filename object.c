@@ -134,6 +134,51 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     mkdir(OBJECTS_DIR, 0755); //if base directory already exists, it won't create a new one
     mkdir(dir, 0755);
+
+    //Making temp file
+    char temp_path[512];
+    snprintf(temp_path, sizeof(temp_path), "%s/tmpXXXXXX", dir);
+
+    int fd = mkstemp(temp_path); //now the XXXXXX would have been replaced with some random characters
+    if (fd < 0) {
+        free(full);
+        return -1;
+    } //if you failed to make the temp file then return -1
+    
+    //Write and fsync - copy data contents to temp file and then push it onto the disk
+    if (write(fd, full, total_len) != (ssize_t)total_len) {
+        close(fd);
+        unlink(temp_path);
+        free(full);
+        return -1;
+    }
+
+    if (fsync(fd) < 0) {
+        close(fd);
+        unlink(temp_path);
+        free(full);
+        return -1;
+    }
+
+    close(fd);
+
+    //Rename the temp file path to the real path name, then open and close the directory 
+    if (rename(temp_path, path) < 0) {
+        unlink(temp_path);
+        free(full);
+        return -1;
+    }
+    int dir_fd = open(dir, O_DIRECTORY);
+    if (dir_fd >= 0) {
+        fsync(dir_fd);
+        close(dir_fd);
+    }
+
+    //write hash into id variable
+    *id_out = id;
+
+    free(full);
+    return 0;
 }
 
 // Read an object from the store.
@@ -161,5 +206,5 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    
+    return 0;
 }
