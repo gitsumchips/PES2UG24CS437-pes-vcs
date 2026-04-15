@@ -198,6 +198,27 @@ int index_load(Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_save(const Index *index) {
+    //Making temp file
+    char temp_path[512];
+    snprintf(temp_path, sizeof(temp_path), "./pes/tmpXXXXXX");
+
+    int fd = mkstemp(temp_path); //now the XXXXXX would have been replaced with some random characters
+    if (fd < 0) {
+        return -1;
+    } //if you failed to make the temp file then return -1
+
+    for (int i = 0; i < index->count; i++) {
+        fprintf(fp, "%" PRIu32 " %64s %" PRIu64 " %" PRIu32 " %s\n");
+    }
+
+    //converting the file descriptor into a file poitner so that fprintf can be used to write into the temp file
+    FILE *fp = fdopen(fd, "w");
+    if (!fp) {
+        close(fd);
+        unlink(temp_path);
+        return -1;
+    }
+
     // TODO: Implement atomic index saving
     // (See Lab Appendix for logical steps)
     (void)index;
