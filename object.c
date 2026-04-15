@@ -118,6 +118,22 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         free(full);
         return 0;
     }
+
+    //Making the directory for the object file
+    char path[512];
+    object_path(&id, path, sizeof(path));
+
+    char dir[512];
+    strncpy(dir, path, sizeof(dir));
+    char *slash = strrchr(dir, '/'); 
+    if (!slash) {
+        free(full);
+        return -1;
+    }
+    *slash = '\0'; //finding the slash that separates directory and file path and changing it to \0 so that only the directory name is stored in dir
+
+    mkdir(OBJECTS_DIR, 0755); //if base directory already exists, it won't create a new one
+    mkdir(dir, 0755);
 }
 
 // Read an object from the store.
