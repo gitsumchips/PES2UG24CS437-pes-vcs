@@ -9,12 +9,16 @@
 // Example single entry (conceptual):
 //   "100644 hello.txt\0" followed by 32 raw bytes of SHA-256
 
+
 #include "tree.h"
+#include "index.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -129,9 +133,63 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
+
+int make_tree(Index *index, const char *cur_dir, ObjectID *out_id) {
+    Tree tree = { .count = 0 };
+    size_t cur_dir_len = strlen(cur_dir);
+
+    for (int i = 0; i < index->count; i++) {
+        IndexEntry *index_entry = &index->entries[i];
+
+        //if current element doesn't belong to the curent directory, 
+        if (strncmp(index_entry->path, cur_dir, cur_dir_len) != 0) {
+            continue;
+        }
+
+        //move past the cur_path
+        const char *rest = index_entry->path + cur_dir_len;
+        if (*rest == '/') rest++;
+
+        const char *slash = strchr(rest, '/');
+
+        if (!slash) { //if you didn't find a / in the rest of the path, then the current element being viewed is a file
+            TreeEntry *tree_entry = &tree.entries[tree.count++];
+
+            tree_entry->mode = index_entry->mode;
+            tree_entry->hash = index_entry->hash;
+
+            strncpy(tree_entry->name, rest, sizeof(tree_entry->name));
+            tree_entry->name[sizeof(tree_entry->name) - 1] = '\0';
+        } 
+        else { //if you did find a slash then you're still in a directory, so you have to invoke recursion here
+            continue;
+        }
+    }
+
+    // Serialize tree
+    void *data;
+    size_t len;
+
+    if (tree_serialize(&tree, &data, &len) < 0)
+        return -1;
+
+    if (object_write(OBJ_TREE, data, len, out_id) < 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
+    return 0;
+}
+
 int tree_from_index(ObjectID *id_out) {
+    Index index;
+    if (index_load(&index) < 0) {
+        return -1;
+    }
+
+    return make_tree(&index, "", id_out);
+
     // TODO: Implement recursive tree building
     // (See Lab Appendix for logical steps)
-    (void)id_out;
-    return -1;
 }
