@@ -162,7 +162,40 @@ int make_tree(Index *index, const char *cur_dir, ObjectID *out_id) {
             tree_entry->name[sizeof(tree_entry->name) - 1] = '\0';
         } 
         else { //if you did find a slash then you're still in a directory, so you have to invoke recursion here
-            continue;
+            size_t dir_len = slash - rest;
+
+            char dirname[256];
+            strncpy(dirname, rest, dir_len);
+            dirname[dir_len] = '\0';
+
+            //If the directory is already created (entry for it is already in the tree) then skip adding it
+            int exists = 0;
+            for (int j = 0; j < tree.count; j++) {
+                if (strcmp(tree.entries[j].name, dirname) == 0) {
+                    exists = 1;
+                    break;
+                }
+            }
+            if (exists) continue;
+
+            char new_cur_dir[512];
+
+            if (cur_dir_len == 0)
+                snprintf(new_cur_dir, sizeof(new_cur_dir), "%s", dirname);
+            else
+                snprintf(new_cur_dir, sizeof(new_cur_dir), "%s/%s", cur_dir, dirname);
+
+            ObjectID sub_id;
+            if (make_tree(index, new_cur_dir, &sub_id) < 0)
+                return -1;
+
+            TreeEntry *tree_entry = &tree.entries[tree.count++];
+
+            tree_entry->mode = MODE_DIR;
+            tree_entry->hash = sub_id;
+
+            strncpy(tree_entry->name, dirname, sizeof(tree_entry->name));
+            tree_entry->name[sizeof(tree_entry->name) - 1] = '\0';
         }
     }
     return 0;
