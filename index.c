@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <dirent.h>
 
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
+
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -208,16 +210,16 @@ int index_add(Index *index, const char *path) {
     if (!fp) return -1;
 
     fseek(fp, 0, SEEK_END);
-    size_t size = ftell(f);
-    rewind(f);
+    size_t size = ftell(fp);
+    rewind(fp);
 
     void *data = malloc(size);
     if (!data) {
-        fclose(f);
+        fclose(fp);
         return -1;
     }
 
-    fread(data, 1, size, f);
+    fread(data, 1, size, fp);
     fclose(fp);
 
     ObjectID id;
@@ -228,5 +230,25 @@ int index_add(Index *index, const char *path) {
 
     free(data);
 
-    return -1;
+    IndexEntry *existing = index_find(index, path);
+
+    if (existing) {
+        //modify the entry already in index and then create the new index object by calling index_save
+        existing->mode = get_file_mode(path);
+        existing->hash = id;
+        return index_save(index);
+    }
+
+    if (index->count >= MAX_INDEX_ENTRIES) return -1;
+
+    //Otherwise (i.e. index entry doesn't exist) create a new one, add it to index->entries and then create new index object by calling index_save
+    IndexEntry *index_entry = &index->entries[index->count];
+
+    index_entry->mode = get_file_mode(path);
+    index_entry->hash = id;
+    strcpy(index_entry->path, path);
+
+    index->count++;
+
+    return index_save(index);
 }
