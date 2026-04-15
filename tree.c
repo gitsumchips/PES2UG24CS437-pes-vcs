@@ -146,7 +146,7 @@ int make_tree(Index *index, const char *cur_dir, ObjectID *out_id) {
             continue;
         }
 
-        //move past the cur_path
+        //move past the cur_dir
         const char *rest = index_entry->path + cur_dir_len;
         if (*rest == '/') rest++;
 
@@ -165,20 +165,6 @@ int make_tree(Index *index, const char *cur_dir, ObjectID *out_id) {
             continue;
         }
     }
-
-    // Serialize tree
-    void *data;
-    size_t len;
-
-    if (tree_serialize(&tree, &data, &len) < 0)
-        return -1;
-
-    if (object_write(OBJ_TREE, data, len, out_id) < 0) {
-        free(data);
-        return -1;
-    }
-
-    free(data);
     return 0;
 }
 
