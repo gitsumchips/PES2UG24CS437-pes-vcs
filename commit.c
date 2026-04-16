@@ -225,8 +225,9 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
 
     free(data);
 
-    // TODO: Implement commit creation
-    // (See Lab Appendix for logical steps)
-    (void)message; (void)commit_id_out;
-    return -1;
+
+    //Update head to point to new commit
+    if (head_update(commit_id_out) != 0) return -1;
+
+    return 0;
 }
