@@ -207,7 +207,7 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     }
 
     //Write the commit author and timestamp into the commit struct
-    snprintf(commit.author, sizeof(c.author), "%s", pes_author());
+    snprintf(commit.author, sizeof(commit.author), "%s", pes_author());
     commit.timestamp = (uint64_t)time(NULL);
 
     //Write commit message into the commit struct
