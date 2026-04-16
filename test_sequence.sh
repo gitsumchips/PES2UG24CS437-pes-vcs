@@ -8,7 +8,8 @@
 
 set -euo pipefail
 
-PES="./pes"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PES="$SCRIPT_DIR/pes"
 TEST_DIR="$(mktemp -d)"
 
 cleanup() {
