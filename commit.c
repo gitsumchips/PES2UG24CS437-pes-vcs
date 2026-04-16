@@ -194,6 +194,17 @@ int head_update(const ObjectID *new_commit) {
 //
 // Returns 0 on success, -1 on error.
 int commit_create(const char *message, ObjectID *commit_id_out) {
+    Commit commit;
+    
+    //Build tree for the commit
+    if (tree_from_index(&commit.tree) != 0) return -1;
+
+    //Sees if the current commit has a commit that came before it (parent)
+    if (head_read(&commit.parent) == 0) {
+        commit.has_parent = 1;
+    } else {
+        commit.has_parent = 0;
+    }
     // TODO: Implement commit creation
     // (See Lab Appendix for logical steps)
     (void)message; (void)commit_id_out;
